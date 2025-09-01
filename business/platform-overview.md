@@ -17,13 +17,11 @@ A **Solana-based platform** specifically designed for **low-cap coin projects an
 
 ### **2. User Participation Process**
 - **Invitation-Only System**: Community leaders invite selected members to participate
-- **Referral Network**: Invited members can invite up to 10 friends each to expand the community
 - Users submit Twitter handle + wallet address to community creators
 - **Raid Participation**: Community members engage with specific X posts within the 24-hour campaign window
 - **Twitter Account Verification**: Users connect their Twitter accounts to verify ownership
 - Platform verifies interactions via Twitter API
 - Automatic USDC distribution to verified participants
-- **Referral Bonuses**: Extra rewards (10-20%) for users who successfully invite engaged friends to the community
 - **Token Airdrops**: Automatic distribution of project tokens to verified participants
 
 ### **3. Technical Architecture**
@@ -37,7 +35,6 @@ A **Solana-based platform** specifically designed for **low-cap coin projects an
 - **Simple verification process**: One-click Twitter OAuth connection
 - Twitter API monitoring during campaign period
 - Cross-reference submitted handles with actual interactions
-- **Referral tracking**: Monitor invitation chains and engagement quality
 
 ### **5. Business Model**
 - **Platform fee**: 3% of campaign budget
@@ -49,7 +46,6 @@ A **Solana-based platform** specifically designed for **low-cap coin projects an
 - **Automated verification** reducing manual work for small teams
 - **Scalable architecture** leveraging Solana's high throughput
 - **Invitation-only system** ensuring genuine community members
-- **Referral network growth** expanding communities organically
 - **Token airdrop support** for project token distribution
 
 ### **7. Implementation Phases**
@@ -88,9 +84,7 @@ A **Solana-based platform** specifically designed for **low-cap coin projects an
 3. **Twitter Account Connection**: Users connect their Twitter accounts to verify ownership
 4. **Platform Verification**: Automated checking via Twitter API
 5. **Raid Engagement Monitoring**: Track likes/comments on specific X post within 24-hour window
-6. **Referral Tracking**: Monitor invited friends and their engagement quality
-7. **Payment Distribution**: Automatic USDC transfers to verified participants
-8. **Referral Bonuses**: Extra rewards for users who successfully invite engaged friends to the community
+6. **Payment Distribution**: Automatic USDC transfers to verified participants
 
 ### **Revenue Streams**
 - **Platform Fee**: 3% of campaign budget
@@ -212,7 +206,6 @@ A **Solana-based platform** specifically designed for **low-cap coin projects an
 - **Total Engagement**: 150 likes, 75 comments, 25 retweets
 - **USDC Rewards**: $1.50 + $3.75 + $2.50 = $7.75 distributed
 - **Token Airdrops**: 250 MTK tokens distributed to participants
-- **Community Growth**: 10 new members invited through referral system
 
 ### **Benefits**:
 - **Authentic Engagement**: Real community members, not bots

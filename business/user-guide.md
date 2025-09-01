@@ -32,7 +32,6 @@ This guide explains how **community members** can participate in raid campaigns 
 1. **Submit Your Details**: Provide your Twitter handle and wallet address
 2. **Connect Your Twitter Account**: Verify ownership by connecting your Twitter account
 3. **Wait for Approval**: Community leader approves your participation
-4. **Invite Friends**: You can invite up to 10 people to join the campaign
 
 ### **Step 3: Complete Verification**
 
@@ -46,7 +45,6 @@ This guide explains how **community members** can participate in raid campaigns 
 1. **Interact**: Like, comment, or retweet the specified X post within 24-hour window
 2. **Wait for Verification**: Platform checks your interaction automatically
 3. **Receive Payment**: USDC and project tokens are sent to your wallet within 24 hours
-4. **Earn Referral Bonuses**: Get extra rewards when your invited friends engage
 
 ## Raid Campaign Types
 
@@ -82,8 +80,6 @@ This guide explains how **community members** can participate in raid campaigns 
 3. **Engage Authentically**: Provide genuine interactions, not spam
 4. **Build Relationships**: Connect with creators for future opportunities
 5. **Stay Active**: Regular participation increases your trust score
-6. **Invite Quality Friends**: Invite people who will genuinely engage with the content
-7. **Earn Referral Bonuses**: Get extra rewards when your invited friends participate
 
 ### **Best Practices**
 - **Quality Over Quantity**: Focus on meaningful interactions
@@ -105,13 +101,10 @@ This guide explains how **community members** can participate in raid campaigns 
 - **Earnings History**: Track all your USDC rewards and token airdrops
 - **Verification Status**: Check if your interactions are verified
 - **Payment History**: View all transactions and pending payments
-- **Referral Network**: Track your invited friends and their engagement
-- **Referral Bonuses**: See extra earnings from your referrals
 
 ### **Profile Settings**
 - **Wallet Address**: Update your USDC wallet address
 - **Twitter Handle**: Change your connected Twitter account
-- **Notification Preferences**: Choose how you want to be notified
 
 ## Payment Information
 
@@ -122,11 +115,7 @@ This guide explains how **community members** can participate in raid campaigns 
 - **Speed**: Payments processed within 24 hours
 - **Fees**: No platform fees on user earnings
 
-### **Referral Bonuses**
-- **Invitation Limit**: Invite up to 10 people per campaign
-- **Bonus Rate**: Earn 10-20% of your invited friends' rewards
-- **Quality Bonus**: Higher bonuses for friends who engage meaningfully
-- **Network Effect**: Build your referral network for ongoing earnings
+
 
 ### **Minimum Payouts**
 - **Threshold**: Most campaigns have no minimum payout

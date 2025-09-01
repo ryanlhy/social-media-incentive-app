@@ -46,8 +46,6 @@ This guide explains how **community leaders** can use EngageReward to incentiviz
 - **Invitation-Only System**: Invite selected community members to participate
 - **Interaction Types**: Choose which actions qualify (like, comment, retweet)
 - **Verification Methods**: Twitter account connection to verify ownership
-- **Referral System**: Enable participants to invite up to 10 friends each
-- **Referral Bonuses**: Set bonus rates for successful referrals (10-20%)
 
 #### **Verification Settings**
 - **Twitter Connection**: Participants connect their Twitter accounts to verify ownership
@@ -61,7 +59,6 @@ This guide explains how **community leaders** can use EngageReward to incentiviz
 - **Participant List**: View all registered participants
 - **Verification Status**: See which interactions are verified
 - **Payment Status**: Track USDC distribution progress
-- **Referral Network**: Monitor invitation chains and network growth
 
 ### **Campaign Controls**
 - **Pause/Resume**: Temporarily stop or restart campaigns
@@ -89,8 +86,6 @@ This guide explains how **community leaders** can use EngageReward to incentiviz
 - **Share Results**: Post campaign outcomes to build trust
 - **Repeat Campaigns**: Regular incentives build loyal community
 - **Cross-Promotion**: Partner with other creators for larger campaigns
-- **Leverage Referrals**: Encourage participants to invite quality friends
-- **Network Growth**: Watch your community expand through trusted referrals
 
 
 

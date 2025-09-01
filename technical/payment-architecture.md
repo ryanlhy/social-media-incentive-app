@@ -11,14 +11,14 @@ This document outlines the payment architecture for EngageReward's social incent
 sequenceDiagram
     participant CommunityLeader
     participant Platform
-    participant Solana
+    participant Solana (Helius RPC)
     participant Monitor
     participant Database
     
     CommunityLeader->>Platform: Request Credit Purchase
     Platform->>CommunityLeader: Provide Platform Wallet Address
-    CommunityLeader->>Solana: Transfer USDC to Platform Wallet
-    Solana->>Monitor: Transaction Confirmation
+    CommunityLeader->>Solana (Helius RPC): Transfer USDC to Platform Wallet
+    Solana (Helius RPC)->>Monitor: Transaction Confirmation
     Monitor->>Database: Verify Community Leader Address
     Monitor->>Database: Add Credits to Community Leader Account
     Monitor->>Platform: Credit Purchase Complete
@@ -194,11 +194,11 @@ graph TB
 ### **2. Technical Risks**
 
 **Risk Categories:**
-- **Network Risk**: Solana network congestion or failures
+- **Network Risk**: Solana network congestion or Helius RPC failures
 - **Infrastructure Risk**: Platform downtime or data loss
 
 **Mitigation Strategies:**
-- **Network Monitoring**: Basic monitoring of Solana network conditions
+- **Network Monitoring**: Basic monitoring of Solana network conditions via Helius
 - **Data Backup**: Regular backups of system data
 
 ## Scalability Considerations

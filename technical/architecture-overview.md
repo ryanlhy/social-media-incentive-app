@@ -42,7 +42,7 @@ graph TB
     
     subgraph "External Services"
         TWITTER[Twitter API<br/>- Engagement Verification<br/>- Account Connection]
-        NOTIFY[Notification Service<br/>- Email Alerts<br/>- Basic Notifications]
+        NOTIFY[Notification Service<br/>- Email Alerts]
     end
     
     CA <--> API
@@ -90,7 +90,7 @@ graph TB
 | Component | Purpose | Key Features |
 |-----------|---------|--------------|
 | **Twitter API** | Social media integration | Engagement verification, account connection |
-| **Notification Service** | User communication | Email alerts, basic notifications |
+| **Notification Service** | User communication | Email alerts |
 
 ## Data Flow
 
@@ -183,17 +183,17 @@ graph TB
 - **Basic Monitoring**: Simple logging and monitoring
 
 ### External Integrations
-- **Blockchain**: Solana Network
+- **Blockchain**: Solana Network (via Helius RPC)
 - **Social Media**: Twitter API
-- **Notifications**: Basic email service
+- **Notifications**: Email service
 
 ## Scalability Considerations
 
 ### Current Capacity
-- **Daily Transactions**: Up to 100 credit purchases
-- **Concurrent Users**: Up to 50 simultaneous users
-- **Campaign Processing**: Up to 20 active campaigns
-- **Reward Distribution**: Up to 100 rewards per hour
+- **Daily Transactions**: Up to 50 credit purchases
+- **Concurrent Users**: Up to 25 simultaneous users
+- **Campaign Processing**: Up to 10 active campaigns
+- **Reward Distribution**: Up to 50 rewards per hour
 
 ### Basic Scaling Strategy
 - **Simple Load Balancing**: Basic load balancing across servers
@@ -202,18 +202,31 @@ graph TB
 
 ## Implementation Phases
 
-### Phase 1: MVP (2-4 weeks)
+### Phase 1: MVP (2-3 weeks)
 - Basic credit system implementation
 - Manual transaction verification
 - Essential security measures
 - Basic address validation
 - Token airdrop support
+- Simple campaign management
 
-### Phase 2: Basic Enhancements (4-6 weeks)
+### Phase 2: Basic Enhancements (2-3 weeks)
 - Automated transaction monitoring
 - Basic address learning system
 - Improved error handling
+- Enhanced user interface
+
+## Detailed Technical Specifications
+
+For detailed implementation specifications including:
+- **Database Schema**: Complete table definitions and relationships
+- **API Specifications**: RESTful endpoints and data formats
+- **External Integrations**: Twitter API, Solana RPC (Helius), Email service setup
+- **Module Breakdown**: Detailed component architecture and functions
+- **Security Implementation**: Specific security measures and configurations
+
+See: **[Technical Implementation Guide](technical-implementation-guide.md)**
 
 ---
 
-*This architecture overview provides a high-level understanding of the MVP payment system design. For detailed implementation specifications, refer to the main payment architecture document.*
+*This architecture overview provides a high-level understanding of the MVP payment system design. For detailed implementation specifications, refer to the Technical Implementation Guide.*
