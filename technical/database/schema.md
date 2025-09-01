@@ -10,14 +10,11 @@ This document defines the complete database schema for the EngageReward MVP plat
 ```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    firebase_uid VARCHAR(128) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     username VARCHAR(100) UNIQUE NOT NULL,
     user_type ENUM('community_leader', 'community_member') NOT NULL,
     solana_wallet_address VARCHAR(44) UNIQUE,
-    twitter_handle VARCHAR(15) UNIQUE,
-    twitter_user_id VARCHAR(50),
-    twitter_access_token TEXT,
-    twitter_refresh_token TEXT,
     is_verified BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -25,15 +22,63 @@ CREATE TABLE users (
 );
 ```
 
-**Purpose**: Store user account information and authentication details.
+**Purpose**: Store user account information with Firebase authentication.
+
+**Key Changes**:
+- **Added**: `firebase_uid` - Unique Firebase user identifier
+- **Removed**: `twitter_handle`, `twitter_user_id`, `twitter_access_token`, `twitter_refresh_token` (moved to social_accounts table)
+- **Kept**: Core user fields for platform functionality
+
+### 2. **social_accounts**
+```sql
+CREATE TABLE social_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    platform VARCHAR(20) NOT NULL, -- 'twitter', 'youtube', 'instagram', etc.
+    platform_user_id VARCHAR(50) NOT NULL,
+    platform_username VARCHAR(50) NOT NULL,
+    platform_access_token TEXT,
+    platform_refresh_token TEXT,
+    is_verified BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    verified_at TIMESTAMP,
+    metadata JSONB, -- Platform-specific data (profile info, etc.)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, platform, platform_user_id)
+);
+```
+
+**Purpose**: Store social media platform connections for each user.
 
 **Key Fields**:
-- `user_type`: Distinguishes between community leaders and members
-- `solana_wallet_address`: For USDC transactions
-- `twitter_handle`: For social media verification
-- `twitter_access_token`: OAuth token for Twitter API access
+- `platform`: Social media platform identifier
+- `platform_user_id`: Platform's internal user ID
+- `platform_username`: Platform username/handle
+- `metadata`: JSON field for platform-specific data
 
-### 2. **credit_balances**
+### 3. **oauth_sessions**
+```sql
+CREATE TABLE oauth_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    firebase_uid VARCHAR(128) NOT NULL,
+    platform VARCHAR(20) NOT NULL,
+    code_verifier VARCHAR(128) NOT NULL,
+    state VARCHAR(64) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Purpose**: Store temporary OAuth session data for social media connections.
+
+**Key Fields**:
+- `code_verifier`: PKCE code verifier for OAuth 2.0
+- `state`: CSRF protection state parameter
+- `expires_at`: Session expiration timestamp
+
+### 4. **credit_balances**
 ```sql
 CREATE TABLE credit_balances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,7 +98,7 @@ CREATE TABLE credit_balances (
 - `total_earned`: Lifetime credits earned
 - `total_spent`: Lifetime credits spent
 
-### 3. **credit_transactions**
+### 5. **credit_transactions**
 ```sql
 CREATE TABLE credit_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -76,7 +121,7 @@ CREATE TABLE credit_transactions (
 - `solana_transaction_hash`: Blockchain transaction reference
 - `status`: Current transaction status
 
-### 4. **raid_campaigns**
+### 6. **raid_campaigns**
 ```sql
 CREATE TABLE raid_campaigns (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -107,7 +152,7 @@ CREATE TABLE raid_campaigns (
 - `token_airdrop_amount`: Amount of project tokens to distribute
 - `token_contract_address`: Solana token contract address
 
-### 5. **campaign_participants**
+### 7. **campaign_participants**
 ```sql
 CREATE TABLE campaign_participants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -179,9 +224,23 @@ CREATE TABLE reward_distributions (
 ## Indexes
 
 ```sql
--- Performance indexes
-CREATE INDEX idx_users_twitter_handle ON users(twitter_handle);
+-- Performance indexes for Firebase integration
+CREATE INDEX idx_users_firebase_uid ON users(firebase_uid);
+CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_solana_address ON users(solana_wallet_address);
+
+-- Social media platform indexes
+CREATE INDEX idx_social_accounts_user_id ON social_accounts(user_id);
+CREATE INDEX idx_social_accounts_platform ON social_accounts(platform);
+CREATE INDEX idx_social_accounts_platform_username ON social_accounts(platform, platform_username);
+CREATE INDEX idx_social_accounts_platform_user_id ON social_accounts(platform, platform_user_id);
+
+-- OAuth session indexes
+CREATE INDEX idx_oauth_sessions_user_id ON oauth_sessions(user_id);
+CREATE INDEX idx_oauth_sessions_firebase_uid ON oauth_sessions(firebase_uid);
+CREATE INDEX idx_oauth_sessions_expires ON oauth_sessions(expires_at);
+
+-- Existing performance indexes
 CREATE INDEX idx_credit_transactions_user_id ON credit_transactions(user_id);
 CREATE INDEX idx_credit_transactions_hash ON credit_transactions(solana_transaction_hash);
 CREATE INDEX idx_raid_campaigns_leader ON raid_campaigns(community_leader_id);
@@ -191,15 +250,31 @@ CREATE INDEX idx_campaign_participants_member ON campaign_participants(community
 CREATE INDEX idx_engagement_verifications_participant ON engagement_verifications(participant_id);
 ```
 
+## Firebase Integration Benefits
+
+### Authentication & Security
+- **Firebase UID**: Unique identifier for each user across all Firebase services
+- **Centralized Auth**: Firebase handles user registration, login, and session management
+- **Built-in Security**: 2FA, password reset, email verification, and security rules
+- **Scalable**: Firebase automatically scales authentication infrastructure
+
+### Multi-Platform Support
+- **Social Media Accounts**: Users can connect multiple platforms (Twitter, YouTube, Instagram, etc.)
+- **Platform-Agnostic**: Same user can participate in campaigns across different social platforms
+- **Flexible Metadata**: JSONB fields store platform-specific information
+- **Easy Expansion**: Simple to add new social media platforms
+
 ## Relationships
 
 ### Primary Relationships
 1. **users** → **credit_balances** (1:1)
 2. **users** → **credit_transactions** (1:many)
 3. **users** → **raid_campaigns** (community_leader_id, 1:many)
-4. **raid_campaigns** → **campaign_participants** (1:many)
-5. **campaign_participants** → **engagement_verifications** (1:many)
-6. **campaign_participants** → **reward_distributions** (1:many)
+4. **users** → **social_accounts** (1:many)
+5. **users** → **oauth_sessions** (1:many)
+6. **raid_campaigns** → **campaign_participants** (1:many)
+7. **campaign_participants** → **engagement_verifications** (1:many)
+8. **campaign_participants** → **reward_distributions** (1:many)
 
 ### Foreign Key Constraints
 - All foreign keys have proper CASCADE rules for data integrity
@@ -225,6 +300,50 @@ CREATE INDEX idx_engagement_verifications_participant ON engagement_verification
 - **verification_status**: 'pending', 'verified', 'failed'
 
 ## Migration Strategy
+
+### Firebase Integration Migration
+```sql
+-- Step 1: Add Firebase UID column to existing users table
+ALTER TABLE users ADD COLUMN firebase_uid VARCHAR(128);
+
+-- Step 2: Create new social_accounts table
+CREATE TABLE social_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    platform VARCHAR(20) NOT NULL,
+    platform_user_id VARCHAR(50) NOT NULL,
+    platform_username VARCHAR(50) NOT NULL,
+    platform_access_token TEXT,
+    platform_refresh_token TEXT,
+    is_verified BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    verified_at TIMESTAMP,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, platform, platform_user_id)
+);
+
+-- Step 3: Migrate existing Twitter data to social_accounts
+INSERT INTO social_accounts (user_id, platform, platform_user_id, platform_username, 
+                           platform_access_token, platform_refresh_token, is_verified, 
+                           verified_at, created_at, updated_at)
+SELECT id, 'twitter', twitter_user_id, twitter_handle, 
+       twitter_access_token, twitter_refresh_token, is_verified,
+       created_at, created_at, updated_at
+FROM users 
+WHERE twitter_handle IS NOT NULL;
+
+-- Step 4: Drop old Twitter columns from users table
+ALTER TABLE users DROP COLUMN twitter_handle;
+ALTER TABLE users DROP COLUMN twitter_user_id;
+ALTER TABLE users DROP COLUMN twitter_access_token;
+ALTER TABLE users DROP COLUMN twitter_refresh_token;
+
+-- Step 5: Make firebase_uid NOT NULL after data migration
+ALTER TABLE users ALTER COLUMN firebase_uid SET NOT NULL;
+ALTER TABLE users ADD CONSTRAINT users_firebase_uid_unique UNIQUE (firebase_uid);
+```
 
 ### Initial Setup
 1. Create database and user

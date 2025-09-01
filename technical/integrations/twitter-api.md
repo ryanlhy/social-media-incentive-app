@@ -28,7 +28,7 @@ https://twitter.com/i/oauth2/authorize
 - `response_type`: code
 - `client_id`: Your Twitter App Client ID
 - `redirect_uri`: Your callback URL
-- `scope`: tweet.read users.read offline.access
+- `scope`: users.read
 - `state`: Random string for CSRF protection
 
 ### 2. Token URL
@@ -37,9 +37,13 @@ https://api.twitter.com/2/oauth2/token
 ```
 
 **Required Scopes:**
-- `tweet.read` - Read tweet data
-- `users.read` - Read user profile data
-- `offline.access` - Refresh token access
+- `users.read` - Read user profile data (for handle verification)
+
+**Note:** We only need `users.read` scope because:
+- OAuth sign-in itself proves user ownership of the Twitter handle
+- Once verified, the handle is marked as owned in our system
+- Engagement verification uses public tweet data via app Bearer Token
+- No ongoing user permissions are needed after initial verification
 
 ### 3. OAuth Configuration
 ```javascript
@@ -52,6 +56,28 @@ const twitterConfig = {
   callbackUrl: process.env.TWITTER_CALLBACK_URL
 };
 ```
+
+### 4. Simplified Verification Flow
+
+#### User Registration Process
+1. **User connects Twitter account** via OAuth 2.0 Authorization Code Flow with PKCE
+2. **Twitter authenticates user** and provides access token
+3. **Platform verifies ownership** by successfully getting user's handle
+4. **Handle marked as verified** in system - no other user can claim it
+5. **Access token discarded** - no ongoing user permissions needed
+
+#### Engagement Verification Process
+1. **Use app Bearer Token** to access public tweet data
+2. **Monitor public engagement** on creator's posts (likes, retweets, comments)
+3. **Cross-reference engagement** with verified user handles in database
+4. **No user-specific permissions** required for engagement verification
+
+**Benefits of this approach:**
+- **Simpler OAuth flow** - minimal scope requirements
+- **Better user experience** - no ongoing permission requests
+- **Enhanced security** - users don't grant persistent access
+- **Public data access** - creator posts are public domain
+- **Eliminates complexity** - no need to manage user access tokens
 
 ## Twitter Webhook Setup
 
@@ -117,7 +143,7 @@ const twitterConfig = {
 
 ## Implementation Functions
 
-### 1. User Authentication
+### 1. User Authentication (Handle Verification Only)
 ```javascript
 // Exchange authorization code for access token
 async function exchangeCodeForToken(code) {
@@ -138,7 +164,7 @@ async function exchangeCodeForToken(code) {
   return response.json();
 }
 
-// Get user info from Twitter
+// Get user info from Twitter (for handle verification)
 async function getUserInfo(accessToken) {
   const response = await fetch('https://api.twitter.com/2/users/me', {
     headers: {
@@ -148,17 +174,41 @@ async function getUserInfo(accessToken) {
   
   return response.json();
 }
+
+// Verify and store user handle ownership
+async function verifyUserHandle(accessToken) {
+  try {
+    const userInfo = await getUserInfo(accessToken);
+    const handle = userInfo.data.username;
+    
+    // Mark handle as verified in our system
+    await markHandleAsVerified(handle);
+    
+    // Discard access token - no ongoing permissions needed
+    return {
+      success: true,
+      handle: handle,
+      verified: true
+    };
+  } catch (error) {
+    console.error('Handle verification failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
 ```
 
-### 2. Engagement Verification
+### 2. Engagement Verification (Using App Bearer Token)
 ```javascript
-// Verify like engagement
+// Verify like engagement using public data
 async function verifyLike(tweetId, username) {
   const response = await fetch(
     `https://api.twitter.com/2/tweets/${tweetId}/liking_users`,
     {
       headers: {
-        'Authorization': `Bearer ${bearerToken}`
+        'Authorization': `Bearer ${bearerToken}` // App Bearer Token, not user token
       }
     }
   );
@@ -167,13 +217,13 @@ async function verifyLike(tweetId, username) {
   return data.data.some(user => user.username === username);
 }
 
-// Verify retweet engagement
+// Verify retweet engagement using public data
 async function verifyRetweet(tweetId, username) {
   const response = await fetch(
     `https://api.twitter.com/2/tweets/${tweetId}/retweeted_by`,
     {
       headers: {
-        'Authorization': `Bearer ${bearerToken}`
+        'Authorization': `Bearer ${bearerToken}` // App Bearer Token, not user token
       }
     }
   );
@@ -182,13 +232,13 @@ async function verifyRetweet(tweetId, username) {
   return data.data.some(user => user.username === username);
 }
 
-// Verify comment engagement
+// Verify comment engagement using public data
 async function verifyComment(tweetId, username) {
   const response = await fetch(
     `https://api.twitter.com/2/tweets/search/recent?query=to:${tweetId}`,
     {
       headers: {
-        'Authorization': `Bearer ${bearerToken}`
+        'Authorization': `Bearer ${bearerToken}` // App Bearer Token, not user token
       }
     }
   );
@@ -197,149 +247,3 @@ async function verifyComment(tweetId, username) {
   return data.data.some(tweet => tweet.author_id === username);
 }
 ```
-
-### 3. Webhook Processing
-```javascript
-// Process incoming webhook events
-async function processWebhookEvent(event) {
-  switch (event.type) {
-    case 'tweet.create':
-      await handleTweetCreate(event);
-      break;
-    case 'tweet.favorite':
-      await handleTweetFavorite(event);
-      break;
-    case 'tweet.retweet':
-      await handleTweetRetweet(event);
-      break;
-    default:
-      console.log('Unknown event type:', event.type);
-  }
-}
-
-// Handle tweet creation events
-async function handleTweetCreate(event) {
-  const tweet = event.tweet_create_events[0];
-  // Process new tweet for campaign verification
-  await verifyCampaignEngagement(tweet);
-}
-
-// Handle tweet favorite events
-async function handleTweetFavorite(event) {
-  const favorite = event.favorite_events[0];
-  // Process like for campaign verification
-  await verifyLikeEngagement(favorite);
-}
-
-// Handle tweet retweet events
-async function handleTweetRetweet(event) {
-  const retweet = event.retweet_events[0];
-  // Process retweet for campaign verification
-  await verifyRetweetEngagement(retweet);
-}
-```
-
-## Error Handling
-
-### Rate Limiting
-```javascript
-// Handle Twitter API rate limits
-async function handleRateLimit(response) {
-  if (response.status === 429) {
-    const resetTime = response.headers.get('x-rate-limit-reset');
-    const waitTime = (resetTime * 1000) - Date.now();
-    
-    if (waitTime > 0) {
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-    
-    return true; // Retry request
-  }
-  
-  return false;
-}
-```
-
-### API Errors
-```javascript
-// Handle Twitter API errors
-async function handleTwitterError(error) {
-  switch (error.code) {
-    case 401:
-      // Unauthorized - refresh token or re-authenticate
-      await refreshUserToken(userId);
-      break;
-    case 403:
-      // Forbidden - user revoked access
-      await deactivateUserAccount(userId);
-      break;
-    case 404:
-      // Tweet not found - may have been deleted
-      await markEngagementAsFailed(engagementId);
-      break;
-    default:
-      // Log error for monitoring
-      console.error('Twitter API error:', error);
-  }
-}
-```
-
-## Security Considerations
-
-### Token Management
-- Store access tokens securely (encrypted)
-- Implement token refresh logic
-- Monitor token expiration
-- Handle token revocation gracefully
-
-### Webhook Security
-- Verify webhook signatures
-- Validate event authenticity
-- Implement webhook retry logic
-- Monitor webhook delivery status
-
-### Rate Limiting
-- Respect Twitter API rate limits
-- Implement exponential backoff
-- Cache responses when appropriate
-- Monitor API usage
-
-## Monitoring and Logging
-
-### Key Metrics
-- API call success/failure rates
-- Response times
-- Rate limit hits
-- Webhook delivery success
-- User authentication success
-
-### Logging
-```javascript
-// Log Twitter API interactions
-function logTwitterAPI(action, details) {
-  logger.info('Twitter API', {
-    action,
-    details,
-    timestamp: new Date().toISOString(),
-    userId: details.userId || null
-  });
-}
-```
-
-## Testing
-
-### Unit Tests
-- Mock Twitter API responses
-- Test OAuth flow
-- Test engagement verification
-- Test webhook processing
-
-### Integration Tests
-- Test with Twitter API sandbox
-- Verify webhook delivery
-- Test rate limiting handling
-- Test error scenarios
-
----
-
-*This Twitter API integration provides the foundation for social media engagement verification in the EngageReward platform. For implementation details and deployment configuration, see the related documentation.*

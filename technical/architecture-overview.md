@@ -31,6 +31,7 @@ graph TB
     
     subgraph "Platform Services"
         API[Payment API<br/>- Credit Management<br/>- Transaction Processing<br/>- Basic Verification]
+        AUTH[Firebase Auth<br/>- User Registration<br/>- Authentication<br/>- Account Management]
         DB[(Database<br/>- User Accounts<br/>- Credit Balances<br/>- Transaction Logs)]
         MONITOR[Transaction Monitor<br/>- Wallet Monitoring<br/>- Basic Auto-Verification]
     end
@@ -47,6 +48,7 @@ graph TB
     
     CA <--> API
     PA <--> API
+    API <--> AUTH
     API <--> DB
     API <--> MONITOR
     MONITOR <--> SOL
@@ -57,6 +59,7 @@ graph TB
     style CA fill:#2196f3,stroke:#1976d2,color:#ffffff
     style PA fill:#2196f3,stroke:#1976d2,color:#ffffff
     style API fill:#9c27b0,stroke:#7b1fa2,color:#ffffff
+    style AUTH fill:#ff5722,stroke:#d84315,color:#ffffff
     style DB fill:#4caf50,stroke:#388e3c,color:#ffffff
     style MONITOR fill:#ff9800,stroke:#f57c00,color:#ffffff
     style SOL fill:#e91e63,stroke:#c2185b,color:#ffffff
@@ -161,7 +164,7 @@ graph TB
 
 | Layer | Purpose | Implementation |
 |-------|---------|----------------|
-| **Application Security** | API protection and user authentication | JWT tokens, basic rate limiting |
+| **Application Security** | API protection and user authentication | Firebase Auth, basic rate limiting |
 | **Transaction Security** | Secure payment processing | Transaction limits, basic monitoring |
 | **Infrastructure Security** | System and network protection | Basic firewalls, secure hosting |
 
@@ -171,21 +174,25 @@ graph TB
 - **API Framework**: Node.js with Express.js
 - **Database**: PostgreSQL
 - **Blockchain Integration**: Solana Web3.js
-- **Authentication**: JWT with OAuth2
+- **Authentication**: Firebase Authentication
+- **Social Media**: OAuth2 with platform-specific APIs
 
 ### Frontend Technologies
 - **Web Application**: React.js
 - **State Management**: Basic state management
 - **UI Framework**: Material-UI
+- **Authentication**: Firebase Auth SDK
 
 ### Infrastructure
 - **Cloud Platform**: AWS or Google Cloud Platform
+- **Authentication Service**: Firebase (Google Cloud)
 - **Basic Monitoring**: Simple logging and monitoring
 
 ### External Integrations
 - **Blockchain**: Solana Network (via Helius RPC)
-- **Social Media**: Twitter API
+- **Social Media**: Twitter API, YouTube API (future)
 - **Notifications**: Email service
+- **User Management**: Firebase Authentication
 
 ## Scalability Considerations
 
