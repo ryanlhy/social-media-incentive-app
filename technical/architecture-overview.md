@@ -127,18 +127,26 @@ sequenceDiagram
     participant Twitter
     participant CommunityMembers
     
-    CommunityLeader->>Platform: Create 24-Hour Raid Campaign
-    Platform->>Database: Check Credit Balance
-    Database->>Platform: Sufficient Credits Available
-    Platform->>Database: Reserve Credits for Campaign
-    Platform->>CommunityLeader: Raid Campaign Created Successfully
-    
-    CommunityMembers->>Platform: Submit X Post Engagement
-    Platform->>Twitter: Verify Engagement on Specific Post
-    Twitter->>Platform: Engagement Confirmed
-    Platform->>Database: Update Community Member Status
-    Platform->>Database: Calculate Rewards
-    Platform->>CommunityMembers: Distribute USDC & Token Rewards
+    CommunityLeader->>Platform: Create 24-Hour Raid Campaign (with tweet URL)
+    Platform->>Database: Get Community Leader's Twitter Handle
+    Platform->>Twitter: Verify Tweet Ownership
+    Twitter->>Platform: Confirm Tweet Author
+    alt Tweet Owned by Community Leader
+        Platform->>Database: Check Credit Balance
+        Database->>Platform: Sufficient Credits Available
+        Platform->>Database: Reserve Credits for Campaign
+        Platform->>Database: Create Campaign with Verified Tweet
+        Platform->>CommunityLeader: Raid Campaign Created Successfully
+        
+        CommunityMembers->>Platform: Submit X Post Engagement
+        Platform->>Twitter: Verify Engagement on Specific Post
+        Twitter->>Platform: Engagement Confirmed
+        Platform->>Database: Update Community Member Status
+        Platform->>Database: Calculate Rewards
+        Platform->>CommunityMembers: Distribute USDC & Token Rewards
+    else Tweet Not Owned
+        Platform->>CommunityLeader: Error: You can only create campaigns for your own posts
+    end
 ```
 
 ## Security Model
@@ -165,8 +173,52 @@ graph TB
 | Layer | Purpose | Implementation |
 |-------|---------|----------------|
 | **Application Security** | API protection and user authentication | Firebase Auth, basic rate limiting |
+| **Campaign Security** | Creator-only campaign validation | Tweet ownership verification, social account linking |
 | **Transaction Security** | Secure payment processing | Transaction limits, basic monitoring |
 | **Infrastructure Security** | System and network protection | Basic firewalls, secure hosting |
+
+### Creator-Only Campaign Security
+
+The platform enforces a strict **creator-only model** where users can only create campaigns for their own Twitter posts. This security model prevents unauthorized promotion and maintains authenticity.
+
+#### Tweet Ownership Verification Flow
+
+```mermaid
+sequenceDiagram
+    participant Creator
+    participant Platform
+    participant TwitterAPI
+    participant Database
+    
+    Creator->>Platform: Submit campaign with tweet URL
+    Platform->>Database: Get creator's verified Twitter handle
+    Database->>Platform: Return @creator_handle
+    Platform->>TwitterAPI: Get tweet author for tweet ID
+    TwitterAPI->>Platform: Return @tweet_author
+    
+    alt Tweet owned by creator
+        Platform->>Database: Create campaign (approved)
+        Platform->>Creator: Campaign created successfully
+    else Tweet not owned by creator
+        Platform->>Creator: Error: "You can only create campaigns for your own posts"
+    end
+```
+
+#### Security Validation Steps
+
+1. **Twitter Account Connection**: Creator must have verified Twitter account linked
+2. **URL Validation**: Tweet URL must be valid and accessible
+3. **Ownership Verification**: Tweet author must match creator's verified handle
+4. **Access Control**: Only authenticated creators can create campaigns
+5. **Audit Trail**: All verification attempts are logged
+
+#### Security Benefits
+
+- **Prevents Spam**: Users cannot promote others' content without permission
+- **Maintains Authenticity**: Only genuine creators can incentivize their content
+- **Legal Protection**: Avoids copyright and consent issues
+- **Quality Control**: Ensures creators have genuine investment in their content
+- **Trust Building**: Community knows they're supporting actual content creators
 
 ## Technology Stack
 

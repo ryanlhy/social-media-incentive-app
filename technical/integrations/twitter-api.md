@@ -11,6 +11,9 @@ This document details the Twitter API integration for the EngageReward MVP platf
 - **GET `/2/users/{id}/tweets`** - Get user tweets
 - **GET `/2/tweets/{id}`** - Get specific tweet
 
+### Tweet Ownership Verification (Creator-Only Campaigns)
+- **GET `/2/tweets/{id}?expansions=author_id&user.fields=username`** - Get tweet with author details for ownership verification
+
 ### Engagement Verification
 - **GET `/2/tweets/{id}/liking_users`** - Get users who liked tweet
 - **GET `/2/tweets/{id}/retweeted_by`** - Get users who retweeted
@@ -200,7 +203,119 @@ async function verifyUserHandle(accessToken) {
 }
 ```
 
-### 2. Engagement Verification (Using App Bearer Token)
+### 2. Tweet Ownership Verification (Creator-Only Campaign Creation)
+```javascript
+// Verify that a creator owns a specific tweet before allowing campaign creation
+async function verifyTweetOwnership(tweetId) {
+  try {
+    const response = await fetch(
+      `https://api.twitter.com/2/tweets/${tweetId}?expansions=author_id&user.fields=username`,
+      {
+        headers: {
+          'Authorization': `Bearer ${bearerToken}` // App Bearer Token
+        }
+      }
+    );
+    
+    const data = await response.json();
+    
+    if (!data.data) {
+      throw new Error('Tweet not found or not accessible');
+    }
+    
+    // Return the username of the tweet author
+    const authorUsername = data.includes?.users?.[0]?.username;
+    return {
+      success: true,
+      tweetAuthor: authorUsername,
+      tweetId: data.data.id,
+      tweetText: data.data.text
+    };
+    
+  } catch (error) {
+    console.error('Tweet ownership verification failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Extract tweet ID from various Twitter URL formats
+function extractTweetIdFromUrl(url) {
+  try {
+    // Handle formats: twitter.com/username/status/ID, x.com/username/status/ID
+    const patterns = [
+      /(?:twitter\.com|x\.com)\/[^\/]+\/status\/(\d+)/i,
+      /\/status\/(\d+)/i
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('URL parsing failed:', error);
+    return null;
+  }
+}
+
+// Complete tweet ownership validation for campaign creation
+async function validateTweetOwnership(creatorHandle, tweetUrl) {
+  try {
+    // 1. Extract tweet ID from URL
+    const tweetId = extractTweetIdFromUrl(tweetUrl);
+    if (!tweetId) {
+      return {
+        success: false,
+        error: 'INVALID_URL',
+        message: 'Invalid Twitter URL format'
+      };
+    }
+    
+    // 2. Verify tweet ownership
+    const ownershipResult = await verifyTweetOwnership(tweetId);
+    if (!ownershipResult.success) {
+      return {
+        success: false,
+        error: 'TWEET_NOT_FOUND',
+        message: ownershipResult.error
+      };
+    }
+    
+    // 3. Check if creator owns the tweet
+    if (ownershipResult.tweetAuthor !== creatorHandle) {
+      return {
+        success: false,
+        error: 'TWEET_NOT_OWNED',
+        message: 'You can only create campaigns for your own posts'
+      };
+    }
+    
+    // 4. Return success with tweet details
+    return {
+      success: true,
+      tweetId: tweetId,
+      tweetAuthor: ownershipResult.tweetAuthor,
+      tweetText: ownershipResult.tweetText
+    };
+    
+  } catch (error) {
+    console.error('Tweet ownership validation failed:', error);
+    return {
+      success: false,
+      error: 'VALIDATION_ERROR',
+      message: error.message
+    };
+  }
+}
+```
+
+### 3. Engagement Verification (Using App Bearer Token)
 ```javascript
 // Verify like engagement using public data
 async function verifyLike(tweetId, username) {

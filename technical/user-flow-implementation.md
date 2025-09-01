@@ -113,50 +113,188 @@ sequenceDiagram
     participant Frontend
     participant Backend
     participant Database
+    participant TwitterAPI
 
-    Creator->>Frontend: Create new campaign (details + rewards)
-    Frontend->>Backend: Submit campaign draft
-    Backend->>Database: Create campaign (status: pending_funding)
-    Backend->>Database: Check creator credit balance
-    Database->>Backend: Return balance
-    alt Sufficient credits
-        Backend->>Database: Reserve credits for campaign budget
-        Database->>Backend: Credits reserved
-        Backend->>Database: Activate campaign (status: active)
-        Backend->>Frontend: Campaign activated
-        Frontend->>Creator: Show active campaign dashboard
-    else Insufficient credits
-        Backend->>Frontend: Respond top_up_required + required amount
-        Frontend->>Creator: Prompt to top up credits
+    Creator->>Frontend: Create new campaign (details + rewards + tweet URL)
+    Frontend->>Backend: Submit campaign draft with tweet URL
+    Backend->>Database: Get creator's verified Twitter handle
+    Database->>Backend: Return @creator_handle
+    Backend->>TwitterAPI: Extract tweet ID from URL
+    Backend->>TwitterAPI: GET tweet author (@tweet_author)
+    TwitterAPI->>Backend: Return tweet author and details
+    
+    alt Tweet owned by creator (@tweet_author == @creator_handle)
+        Backend->>Database: Create campaign with verified tweet data
+        Backend->>Database: Check creator credit balance
+        Database->>Backend: Return balance
+        alt Sufficient credits
+            Backend->>Database: Reserve credits for campaign budget
+            Database->>Backend: Credits reserved
+            Backend->>Database: Activate campaign (status: active)
+            Backend->>Frontend: Campaign activated with tweet preview
+            Frontend->>Creator: Show active campaign dashboard
+        else Insufficient credits
+            Backend->>Frontend: Respond insufficient_credits + required amount
+            Frontend->>Creator: Prompt to top up credits
+        end
+    else Tweet not owned by creator
+        Backend->>Frontend: Error: TWEET_NOT_OWNED
+        Frontend->>Creator: "You can only create campaigns for your own posts"
+    else Twitter account not connected
+        Backend->>Frontend: Error: TWITTER_NOT_CONNECTED
+        Frontend->>Creator: "Please connect your Twitter account first"
+    else Invalid tweet URL
+        Backend->>Frontend: Error: INVALID_URL
+        Frontend->>Creator: "Please provide a valid Twitter post URL"
     end
 ```
 
 **Technical Implementation:**
 ```javascript
-// 1. Create campaign in pending_funding
-const campaign = await createCampaign({
-  creatorId: creatorUserId,
-  creatorHandle: verifiedTwitterHandle,
-  postUrl: tweetUrl,
-  duration: 24, // hours
-  budget: usdcBudget,
-  rewards: { like: 0.01, retweet: 0.02, comment: 0.05 },
-  status: 'pending_funding'
-});
+// Enhanced campaign creation with tweet ownership verification
+async function createCampaignWithVerification(creatorUserId, campaignData) {
+  try {
+    // 1. Get creator's verified Twitter handle
+    const creatorHandle = await getCreatorTwitterHandle(creatorUserId);
+    if (!creatorHandle) {
+      return {
+        success: false,
+        error: 'TWITTER_NOT_CONNECTED',
+        message: 'Please connect your Twitter account first'
+      };
+    }
 
-// 2. Check and reserve credits
-const balance = await getCreditBalance(creatorUserId);
-if (balance.available < campaign.budget) {
-  return {
-    action: 'top_up_required',
-    requiredAmount: campaign.budget - balance.available,
-    campaignId: campaign.id
-  };
+    // 2. Verify tweet ownership (CRITICAL SECURITY STEP)
+    const ownershipValidation = await validateTweetOwnership(creatorHandle, campaignData.x_post_url);
+    if (!ownershipValidation.success) {
+      return {
+        success: false,
+        error: ownershipValidation.error,
+        message: ownershipValidation.message
+      };
+    }
+
+    // 3. Create campaign with verified tweet data
+    const campaign = await createCampaign({
+      creatorId: creatorUserId,
+      creatorHandle: creatorHandle,
+      campaignName: campaignData.campaign_name,
+      xPostUrl: campaignData.x_post_url,
+      xPostId: ownershipValidation.tweetId,
+      tweetPreview: {
+        author: ownershipValidation.tweetAuthor,
+        text: ownershipValidation.tweetText
+      },
+      duration: 24, // hours
+      budget: campaignData.total_budget,
+      rewards: {
+        like: campaignData.reward_per_like || 0,
+        comment: campaignData.reward_per_comment || 0,
+        retweet: campaignData.reward_per_retweet || 0
+      },
+      tokenAirdrop: {
+        amount: campaignData.token_airdrop_amount || 0,
+        contractAddress: campaignData.token_contract_address
+      },
+      status: 'pending_funding'
+    });
+
+    // 4. Check and reserve credits
+    const balance = await getCreditBalance(creatorUserId);
+    if (balance.available < campaign.budget) {
+      return {
+        success: false,
+        error: 'INSUFFICIENT_CREDITS',
+        message: 'Insufficient credits to create campaign',
+        requiredCredits: campaign.budget,
+        currentBalance: balance.available,
+        campaignId: campaign.id
+      };
+    }
+
+    // 5. Reserve credits and activate
+    await reserveCredits({ 
+      userId: creatorUserId, 
+      campaignId: campaign.id, 
+      amount: campaign.budget 
+    });
+    await updateCampaignStatus(campaign.id, 'active');
+
+    return {
+      success: true,
+      campaign: campaign,
+      message: 'Campaign created successfully'
+    };
+
+  } catch (error) {
+    console.error('Campaign creation failed:', error);
+    return {
+      success: false,
+      error: 'CREATION_ERROR',
+      message: error.message
+    };
+  }
 }
 
-// 3. Reserve credits and activate
-await reserveCredits({ userId: creatorUserId, campaignId: campaign.id, amount: campaign.budget });
-await updateCampaignStatus(campaign.id, 'active');
+// Database helper function to get creator's Twitter handle
+async function getCreatorTwitterHandle(creatorUserId) {
+  try {
+    const result = await db.query(`
+      SELECT sa.platform_username 
+      FROM social_accounts sa 
+      WHERE sa.user_id = $1 
+        AND sa.platform = 'twitter' 
+        AND sa.is_verified = true 
+        AND sa.is_active = true
+    `, [creatorUserId]);
+    
+    return result.rows[0]?.platform_username || null;
+  } catch (error) {
+    console.error('Failed to get creator Twitter handle:', error);
+    return null;
+  }
+}
+
+// Database function to create campaign with ownership verification
+async function createCampaign(campaignData) {
+  try {
+    const result = await db.query(`
+      INSERT INTO raid_campaigns (
+        community_leader_id, campaign_name, x_post_url, x_post_id,
+        campaign_duration_hours, total_budget, reward_per_like, 
+        reward_per_comment, reward_per_retweet, token_airdrop_amount,
+        token_contract_address, status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+      RETURNING *
+    `, [
+      campaignData.creatorId,
+      campaignData.campaignName,
+      campaignData.xPostUrl,
+      campaignData.xPostId,
+      campaignData.duration,
+      campaignData.budget,
+      campaignData.rewards.like,
+      campaignData.rewards.comment,
+      campaignData.rewards.retweet,
+      campaignData.tokenAirdrop.amount,
+      campaignData.tokenAirdrop.contractAddress,
+      campaignData.status
+    ]);
+
+    return {
+      id: result.rows[0].id,
+      campaign_name: result.rows[0].campaign_name,
+      x_post_url: result.rows[0].x_post_url,
+      x_post_id: result.rows[0].x_post_id,
+      status: result.rows[0].status,
+      budget: result.rows[0].total_budget,
+      tweet_preview: campaignData.tweetPreview
+    };
+  } catch (error) {
+    console.error('Database campaign creation failed:', error);
+    throw error;
+  }
+}
 
 return { action: 'campaign_activated', campaignId: campaign.id };
 ```

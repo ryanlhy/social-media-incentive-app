@@ -180,7 +180,7 @@ Get current credit balance and transaction history.
 ```
 
 ### POST `/api/community-leader/campaigns`
-Create a new raid campaign.
+Create a new raid campaign with tweet ownership verification.
 
 **Request Body:**
 ```json
@@ -196,17 +196,77 @@ Create a new raid campaign.
 }
 ```
 
-**Response:**
+**Success Response:**
 ```json
 {
   "success": true,
   "campaign": {
     "id": "uuid",
     "campaign_name": "string",
+    "x_post_url": "string",
+    "x_post_id": "string",
     "status": "draft",
-    "total_budget": "decimal"
+    "total_budget": "decimal",
+    "tweet_preview": {
+      "author": "string",
+      "text": "string"
+    }
   },
   "message": "Campaign created successfully"
+}
+```
+
+**Error Responses:**
+
+**Twitter Account Not Connected:**
+```json
+{
+  "success": false,
+  "error": "TWITTER_NOT_CONNECTED",
+  "message": "Please connect your Twitter account first",
+  "action_required": "connect_twitter"
+}
+```
+
+**Invalid Twitter URL:**
+```json
+{
+  "success": false,
+  "error": "INVALID_URL",
+  "message": "Invalid Twitter URL format. Please provide a valid tweet URL.",
+  "example": "https://twitter.com/username/status/1234567890"
+}
+```
+
+**Tweet Not Found:**
+```json
+{
+  "success": false,
+  "error": "TWEET_NOT_FOUND",
+  "message": "Tweet not found or not accessible. Please check the URL.",
+  "details": "The tweet may be private, deleted, or the URL may be incorrect"
+}
+```
+
+**Tweet Not Owned by Creator:**
+```json
+{
+  "success": false,
+  "error": "TWEET_NOT_OWNED",
+  "message": "You can only create campaigns for your own posts",
+  "details": "This tweet belongs to @other_user, but you are authenticated as @your_handle"
+}
+```
+
+**Insufficient Credits:**
+```json
+{
+  "success": false,
+  "error": "INSUFFICIENT_CREDITS",
+  "message": "Insufficient credits to create campaign",
+  "required_credits": "decimal",
+  "current_balance": "decimal",
+  "action_required": "add_credits"
 }
 ```
 
