@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document details the complete user journey from initial sign-up through receiving incentives, including the creators journey and system interactions.
+This document details the complete user journey from initial sign-up through receiving incentives, including all technical implementation steps, API calls, and system interactions.
 
 ## Architecture Benefits
 
