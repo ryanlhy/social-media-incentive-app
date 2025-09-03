@@ -31,7 +31,7 @@ graph TB
     
     subgraph "Platform Services"
         API[Payment API<br/>- Credit Management<br/>- Transaction Processing<br/>- Basic Verification]
-        AUTH[Firebase Auth<br/>- User Registration<br/>- Authentication<br/>- Account Management]
+        AUTH[Supabase Auth<br/>- User Registration<br/>- Authentication<br/>- Account Management<br/>- Row Level Security]
         DB[(Database<br/>- User Accounts<br/>- Credit Balances<br/>- Transaction Logs)]
         MONITOR[Transaction Monitor<br/>- Wallet Monitoring<br/>- Basic Auto-Verification]
     end
@@ -172,7 +172,7 @@ graph TB
 
 | Layer | Purpose | Implementation |
 |-------|---------|----------------|
-| **Application Security** | API protection and user authentication | Firebase Auth, basic rate limiting |
+| **Application Security** | API protection and user authentication | Supabase Auth, basic rate limiting |
 | **Campaign Security** | Creator-only campaign validation | Tweet ownership verification, social account linking |
 | **Transaction Security** | Secure payment processing | Transaction limits, basic monitoring |
 | **Infrastructure Security** | System and network protection | Basic firewalls, secure hosting |
@@ -224,27 +224,28 @@ sequenceDiagram
 
 ### Backend Technologies
 - **API Framework**: Node.js with Express.js
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL (Supabase)
 - **Blockchain Integration**: Solana Web3.js
-- **Authentication**: Firebase Authentication
+- **Authentication**: Supabase Auth
 - **Social Media**: OAuth2 with platform-specific APIs
 
 ### Frontend Technologies
 - **Web Application**: React.js
 - **State Management**: Basic state management
 - **UI Framework**: Material-UI
-- **Authentication**: Firebase Auth SDK
+- **Authentication**: Supabase Auth SDK
 
 ### Infrastructure
-- **Cloud Platform**: AWS or Google Cloud Platform
-- **Authentication Service**: Firebase (Google Cloud)
+- **Cloud Platform**: Supabase (PostgreSQL + Auth)
+- **Database Service**: Supabase PostgreSQL
+- **Authentication Service**: Supabase Auth
 - **Basic Monitoring**: Simple logging and monitoring
 
 ### External Integrations
 - **Blockchain**: Solana Network (via Helius RPC)
 - **Social Media**: Twitter API, YouTube API (future)
 - **Notifications**: Email service
-- **User Management**: Firebase Authentication
+- **User Management**: Supabase Auth
 
 ## Scalability Considerations
 

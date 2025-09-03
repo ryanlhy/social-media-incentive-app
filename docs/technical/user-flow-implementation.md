@@ -13,18 +13,19 @@ This document details the complete user journey from initial sign-up through rec
 - **Platform-agnostic reward system**
 
 ### Better User Management
-- **Centralized user authentication** with Firebase Auth
+- **Centralized user authentication** with Supabase Auth
 - **Multiple social accounts** per user
 - **Easier account recovery** and management
 - **Better security** with platform-specific OAuth tokens
 - **Built-in security features** (2FA, password reset, etc.)
+- **Row Level Security (RLS)** for data protection
 
 ### Scalability
 - **Modular social platform integration**
 - **Independent platform APIs** don't affect core user system
 - **Easier testing** and development
 - **Better separation of concerns**
-- **Firebase handles authentication scaling** automatically
+- **Supabase handles authentication scaling** automatically
 
 ## Complete User Flow
 
@@ -65,17 +66,29 @@ sequenceDiagram
 
 **Technical Implementation:**
 ```javascript
-// 1. Create user account with Firebase Auth
-const userCredential = await createUserWithEmailAndPassword(auth, userEmail, password);
-const firebaseUser = userCredential.user;
+// 1. Create user account with Supabase Auth
+const { data: authData, error: authError } = await supabase.auth.signUp({
+  email: userEmail,
+  password: password,
+  options: {
+    data: {
+      username: platformUsername
+    }
+  }
+});
 
-// 2. Create user profile in our database
+if (authError) throw authError;
+const supabaseUser = authData.user;
+
+// 2. Create user profile in our database (handled automatically by Supabase Auth)
+// User profile is automatically created in auth.users table
+// Additional profile data can be stored in public.user_profiles table
 const userAccount = await createUserProfile({
-  firebaseUid: firebaseUser.uid,
+  id: supabaseUser.id, // Supabase Auth UUID
   email: userEmail,
   username: platformUsername,
   status: 'active',
-  createdAt: new Date()
+  created_at: new Date()
 });
 
 // 3. Generate Twitter OAuth URL with PKCE
@@ -89,7 +102,7 @@ const tokenResponse = await exchangeCodeForToken(authCode, codeVerifier);
 const userInfo = await getUserInfo(tokenResponse.access_token);
 await linkTwitterAccount({
   userId: userAccount.id,
-  firebaseUid: firebaseUser.uid,
+  supabaseUid: supabaseUser.id,
   twitterHandle: userInfo.data.username,
   twitterId: userInfo.data.id,
   verifiedAt: new Date(),
@@ -99,7 +112,7 @@ await linkTwitterAccount({
 // 6. Store OAuth session temporarily
 await storeOAuthSession({
   userId: userAccount.id,
-  firebaseUid: firebaseUser.uid,
+  supabaseUid: supabaseUser.id,
   codeVerifier: codeVerifier,
   expiresAt: new Date(Date.now() + 300000) // 5 minutes
 });
@@ -593,7 +606,8 @@ await finalizeRewardDistribution(campaignId, transaction.signature, rewards);
 > **Note**: Complete database schema details are available in `technical/database/schema.md`
 
 ### Key Tables for User Flow
-- **users**: Main user accounts with Firebase authentication
+- **auth.users**: Main user accounts with Supabase authentication (built-in)
+- **public.user_profiles**: Extended user profile information
 - **social_accounts**: Social media platform connections
 - **oauth_sessions**: Temporary OAuth session data
 - **campaign_registrations**: Campaign participation tracking
@@ -624,29 +638,31 @@ DELETE /api/social/accounts/:id        // Remove social account connection
 - Campaign creation: `POST /api/community-leader/campaigns`
 - Campaign participation: `POST /api/community-member/campaigns/{id}/join`
 - Reward distribution: `POST /api/admin/rewards/distribute`
-- User authentication: Firebase SDK handles client-side auth
+- User authentication: Supabase Auth SDK handles client-side auth
 
-## Firebase Configuration
+## Supabase Configuration
 
-> **Note**: Complete Firebase setup and authentication details are available in `technical/modules/authentication.md`
+> **Note**: Complete Supabase setup and authentication details are available in `technical/modules/authentication.md`
 
 ### Integration Points
-- User registration and login handled by Firebase Auth
-- Firebase ID tokens verified on backend for API access
-- Social media connections stored separately with Firebase UID reference
+- User registration and login handled by Supabase Auth
+- Supabase JWT tokens verified on backend for API access
+- Social media connections stored separately with Supabase Auth UUID reference
+- Row Level Security (RLS) policies automatically protect user data
 
 ## Security Considerations
 
 > **Note**: Detailed security implementations are covered in:
-> - `technical/modules/authentication.md` - Firebase and OAuth security
+> - `technical/modules/authentication.md` - Supabase Auth and OAuth security
 > - `technical/integrations/twitter-api.md` - Twitter API security
 > - `technical/integrations/solana-integration.md` - Blockchain security
 
 ### Key Security Areas
-- **Authentication**: Firebase ID token verification and OAuth PKCE
+- **Authentication**: Supabase JWT token verification and OAuth PKCE
 - **API Security**: Rate limiting and bearer token protection  
 - **Engagement Verification**: Duplicate prevention and timestamp validation
 - **Reward Distribution**: Transaction validation and wallet verification
+- **Database Security**: Row Level Security (RLS) policies for data protection
 
 ## Error Handling
 
@@ -661,12 +677,13 @@ DELETE /api/social/accounts/:id        // Remove social account connection
 
 ## Authentication Integration
 
-> **Note**: Complete Firebase authentication middleware and frontend integration details are available in `technical/modules/authentication.md`
+> **Note**: Complete Supabase authentication middleware and frontend integration details are available in `technical/modules/authentication.md`
 
 ### Authentication Flow Integration
-- Firebase ID tokens verify user identity for all protected routes
-- Frontend authentication state management with React hooks
+- Supabase JWT tokens verify user identity for all protected routes
+- Frontend authentication state management with React hooks and Supabase Auth SDK
 - Backend middleware validates tokens on each API request
+- Row Level Security (RLS) automatically enforces data access policies
 
 ## Monitoring & Analytics
 
@@ -678,7 +695,7 @@ DELETE /api/social/accounts/:id        // Remove social account connection
 - Campaign completion rates by user type
 
 ### Critical Monitoring Points
-1. **User Account Creation**: Firebase registration success
+1. **User Account Creation**: Supabase Auth registration success
 2. **Social Connection**: Twitter OAuth completion rates
 3. **Campaign Participation**: Registration and engagement rates
 4. **Automated Verification**: 24-hour engagement tracking accuracy
